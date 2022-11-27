@@ -1,0 +1,8 @@
+__pycache__/
+imagenet_data/
+notes
+data/
+ckpt/
+wandb/
+multirun.yaml
+embeddings/cifar10_g6/08*

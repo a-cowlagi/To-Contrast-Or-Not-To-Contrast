@@ -1,0 +1,5 @@
+bs: 64
+epochs: 100
+lr: 0.01
+l2: 0.00001
+multi: False

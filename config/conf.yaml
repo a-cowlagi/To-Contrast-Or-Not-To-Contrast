@@ -1,0 +1,25 @@
+seed: 0
+workers: 4
+
+deploy: False
+log_interval: 1
+tag: scratch
+
+# Nested configs. Disable hydra logging
+defaults:
+  - _self_
+  - hp: cifar10
+  - net: wrn16_4
+  - task: cifar10
+  - override hydra/job_logging: disabled
+  - override hydra/hydra_logging: disabled
+
+# Disable hydra directory structure
+hydra:
+  output_subdir: Null
+  run:
+    dir: .
+
+  sweep:
+    dir: .
+    subdir: .

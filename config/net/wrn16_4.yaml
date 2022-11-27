@@ -1,0 +1,6 @@
+depth: 16
+width: 4
+dropout: 0.0
+layer_norm: True
+fc_bias: False
+euclid: False
