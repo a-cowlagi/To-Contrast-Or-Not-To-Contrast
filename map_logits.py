@@ -33,6 +33,7 @@ def main(cfg):
         wandb.run.name = wandb.run.id
         wandb.run.save()
         wandb.config.update(OmegaConf.to_container(cfg))
+        
 
     set_seed(cfg.seed)
     cfg.task.labs = cfg.map.task_labs

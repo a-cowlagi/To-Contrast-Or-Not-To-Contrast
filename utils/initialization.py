@@ -20,7 +20,7 @@ def set_seed(seed=0):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     torch.manual_seed(true_seed)
-    torch.cuda.manual_see_all(true_seed)
+    torch.cuda.manual_seed_all(true_seed)
 
 
 def open_log(cfg):
