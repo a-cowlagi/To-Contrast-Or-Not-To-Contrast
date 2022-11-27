@@ -1,4 +1,4 @@
 proto: True
 task_labs: [0, 1]
 euclid: True
-ckpt_dir: "../SimCLR/results_t2/ckpt/"
+ckpt_dir: "SimCLR/results_t2/ckpt/"
