@@ -5,7 +5,6 @@ import numpy as np
 
 class LinearProtoMap():
     def __init__(self, cfg, dataloaders, net):
-
         self.criterion = nn.CrossEntropyLoss()
         self.cfg = cfg
         self.dataloaders = dataloaders

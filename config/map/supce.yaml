@@ -1,0 +1,5 @@
+proto: True
+task_labs: [0, 1, 2, 3, 4]
+euclid: True
+ckpt_dir: "SupContrast/save/SupCE/cifar10_models/cifar10_resnet18_lr_0.2_decay_0.0001_bsz_256_cosine_seed_0"
+learning_mode: "SupCE"
