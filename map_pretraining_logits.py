@@ -29,6 +29,7 @@ def load_model(ckpt, cfg):
         model = SupCEResNet(num_classes= ckpt["model"]["fc.bias"].shape[0])
     
     state_dict = ckpt['model']
+
     if torch.cuda.is_available():
         if torch.cuda.device_count() > 1:
             model.encoder = torch.nn.DataParallel(model.encoder)
@@ -58,7 +59,6 @@ def main(cfg):
     if cfg.deploy:
         wandb.init(project="map_pretraining_logits", dir = fdir)
         wandb.run.name = f"{cfg.map.learning_mode}_{cfg.map.task_labs}_{cfg.seed}"
-        wandb.run.save()
         wandb.config.update(OmegaConf.to_container(cfg))
         fpath = wandb.run.id
     else:
@@ -72,7 +72,6 @@ def main(cfg):
     loaders = dataset.fetch_data_loaders(cfg.hp.bs, cfg.workers, shuf=False)
 
     all_metrics = {}
-
 
     dirs = list(glob(cfg.map.ckpt_dir + "/*"))
     get_dir_ep = lambda x: int(x.split("_")[-1].split(".")[0])
