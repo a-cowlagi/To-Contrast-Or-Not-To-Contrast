@@ -11,6 +11,7 @@ defaults:
   - hp: cifar10
   - net: wrn16_4
   - task: cifar10
+  - plot_loss: default
   - override hydra/job_logging: disabled
   - override hydra/hydra_logging: disabled
 

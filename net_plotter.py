@@ -6,7 +6,7 @@ import torch
 import copy
 from os.path import exists, commonprefix
 import h5py
-import h5_util
+import utils.h5_util as h5_util
 import os
 
 ################################################################################
@@ -212,10 +212,15 @@ def create_random_direction(net, dir_type='weights', ignore='biasbn', norm='filt
     if dir_type == 'weights':
         weights = get_weights(net) # a list of parameters.
         direction = get_random_weights(weights)
+        # print what device direction is on
+        # print what device weights is on
+        print('direction is on device: {}'.format(direction[0].device))
+        print('weights is on device: {}'.format(weights[0].device))
         normalize_directions_for_weights(direction, weights, norm, ignore)
     elif dir_type == 'states':
         states = net.state_dict() # a dict of parameters, including BN's running mean/var.
         direction = get_random_states(states)
+   
         normalize_directions_for_states(direction, states, norm, ignore)
 
     return direction
@@ -266,6 +271,7 @@ def load_directions(dir_file):
     """ Load direction(s) from the direction file."""
 
     f = h5py.File(dir_file, 'r')
+    print(f.keys())
     if 'ydirection' in f.keys():  # If this is a 2D plot
         xdirection = h5_util.read_list(f, 'xdirection')
         ydirection = h5_util.read_list(f, 'ydirection')

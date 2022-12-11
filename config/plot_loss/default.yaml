@@ -1,0 +1,25 @@
+x: "-1:1:51"
+y: "-1:1:51"
+xnorm: "filter" 
+xignore: "biasbn"
+ynorm: "filter" 
+yignore: "biasbn"
+same_dir: false
+
+direction_dir: "plot_landscape/dir_files"
+surf_dir: "plot_landscape/surf_files"
+dir_file: ''
+
+dir_type: "weights"
+
+plot: True
+proj_file: ''
+vmin: 0.1
+vmax: 4
+vlevel: 0.3
+show: False
+
+model: "resnet18"
+model_ckpt_name: SupContrast/save/SimCLR/cifar10_models/cifar10_resnet18_lr_0.05_decay_0.0001_bsz_256_temp_0.07_cosine_seed_0/model_200.pth
+clf_ckpt_name: SupContrast/save/linear_tuning/SimCLR/cifar100/simclr_on_cifar10_seed_0/task_0_1_2_3_4/models/classifier_30.pth
+pretrained_tag: simclr_on_cifar10

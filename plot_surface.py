@@ -14,16 +14,18 @@ import torch.nn.functional as F
 import time
 from torch.autograd.variable import Variable
 import hydra
+from omegaconf import OmegaConf,open_dict
 import h5py
-import plot_landscape.projection as proj
+import utils.projection as proj
 from utils.data import Cifar10Dataset, Cifar100Dataset
 from utils.initialization import set_seed
 from nets.clr_nets import SupConResNet, SupCEResNet, LinearClassifier
-import plot_landscape.net_plotter as net_plotter
-import plot_landscape.scheduler as scheduler
-import plot_landscape.plot_2D as plot_2D
-import plot_landscape.plot_1D as plot_1D
-import plot_landscape.h5_util as h5_util
+import net_plotter
+import utils.scheduler as scheduler
+
+import utils.plot_2D as plot_2D
+import utils.plot_1D as plot_1D
+import utils.h5_util as h5_util
 
 class model_wrapper(nn.Module):
     def __init__(self, model, classifier):
@@ -37,16 +39,19 @@ class model_wrapper(nn.Module):
         return x
 
 def load_model(cfg):
-    if (cfg.learning_mode == "SimCLR") or (cfg.learning_mode == "SupCon"):
-        model = SupConResNet(name=cfg.plot_loss.model, feat_dim = ckpt["model"]["head.2.bias"].shape[0])
+    model_ckpt = torch.load(cfg.plot_loss.model_ckpt_name)
+    clf_ckpt = torch.load(cfg.plot_loss.clf_ckpt_name)
+    if (cfg.map.learning_mode == "SimCLR") or (cfg.map.learning_mode == "SupCon"):
+        model = SupConResNet(name=cfg.plot_loss.model, feat_dim = model_ckpt["model"]["head.2.bias"].shape[0])
     else:
-        model = SupCEResNet(name=cfg.plot_loss.model, num_classes= ckpt["model"]["fc.bias"].shape[0])
+        model = SupCEResNet(name=cfg.plot_loss.model, num_classes= model_ckpt["model"]["fc.bias"].shape[0])
     
-    model_state_dict = cfg.model_ckpt['model']
-    clf_state_dict = cfg.clf_ckpt['model']
+    model_state_dict = model_ckpt['model']
+    clf_state_dict = clf_ckpt['model']
     
     criterion = torch.nn.CrossEntropyLoss()
-    classifier = LinearClassifier(name=cfg.plot_loss.model, num_classes=cfg.plot_loss.n_cls)
+    print(len(cfg.task.labs))
+    classifier = LinearClassifier(name=cfg.plot_loss.model, num_classes=len(cfg.task.labs))
 
     if torch.cuda.is_available():
         if torch.cuda.device_count() > 1:
@@ -59,9 +64,9 @@ def load_model(cfg):
             model_state_dict = new_model_state_dict
         
         
-        model = model.cuda()
-        classifier = classifier.cuda()
-        criterion = criterion.cuda()
+        # model = model.cuda()
+        # classifier = classifier.cuda()
+        # criterion = criterion.cuda()
 
         model.load_state_dict(model_state_dict)
         classifier.load_state_dict(clf_state_dict)
@@ -90,18 +95,18 @@ def setup_surface_file(cfg, surf_file, dir_file):
     f['dir_file'] = dir_file
 
     # Create the coordinates(resolutions) at which the function is evaluated
-    xcoordinates = np.linspace(cfg.plot_loss.xmin, cfg.plot_loss.xmax, num=cfg.plot_loss.xnum)
+    xcoordinates = np.linspace(cfg.plot_loss.xmin, cfg.plot_loss.xmax, num=int(cfg.plot_loss.xnum))
     f['xcoordinates'] = xcoordinates
 
     if cfg.plot_loss.y:
-        ycoordinates = np.linspace(cfg.plot_loss.ymin, cfg.plot_loss.ymax, num=cfg.plot_loss.ynum)
+        ycoordinates = np.linspace(cfg.plot_loss.ymin, cfg.plot_loss.ymax, num=int(cfg.plot_loss.ynum))
         f['ycoordinates'] = ycoordinates
     f.close()
 
     return surf_file
 
 
-def eval_loss(net, criterion, loader, use_cuda=False):
+def eval_loss(net, criterion, loader, use_cuda=True):
     """
     Evaluate the loss value for a given 'net' on the dataset provided by the loader.
 
@@ -118,7 +123,8 @@ def eval_loss(net, criterion, loader, use_cuda=False):
     total = 0 # number of samples
     num_batch = len(loader)
 
-    net.cuda()
+    if (use_cuda):
+        net.cuda()
     net.eval()
 
     with torch.no_grad():
@@ -235,18 +241,22 @@ def crunch(surf_file, net, w, s, d, dataloader, loss_key, acc_key, comm, rank, c
 
 @hydra.main(config_path="./config", config_name="conf.yaml")
 def main(cfg):
-    set_seed(cfg.seed)
+    set_seed(cfg.plot_loss.seed)
+    cfg.seed = cfg.plot_loss.seed
 
     comm, rank, nproc = None, 0, 1
 
     try:
-        cfg.plot_loss.xmin, cfg.plot_loss.xmax, cfg.plot_loss.xnum = [float(a) for a in cfg.plot_loss.x.split(':')]
-        cfg.plot_loss.ymin, cfg.plot_loss.ymax, cfg.plot_loss.ynum = (None, None, None)
-        if cfg.plot_loss.y:
-            cfg.plot_loss.ymin, cfg.plot_loss.ymax, cfg.plot_loss.ynum = [float(a) for a in cfg.plot_loss.y.split(':')]
-            assert cfg.plot_loss.ymin and cfg.plot_loss.ymax and cfg.plot_loss.ynum, \
-            'You specified some arguments for the y axis, but not all'
-    except:
+        OmegaConf.set_struct(cfg, True)
+        with open_dict(cfg):
+            cfg.plot_loss.xmin, cfg.plot_loss.xmax, cfg.plot_loss.xnum = [float(a) for a in cfg.plot_loss.x.split(':')]
+            cfg.plot_loss.ymin, cfg.plot_loss.ymax, cfg.plot_loss.ynum = (None, None, None)
+            if cfg.plot_loss.y:
+                cfg.plot_loss.ymin, cfg.plot_loss.ymax, cfg.plot_loss.ynum = [float(a) for a in cfg.plot_loss.y.split(':')]
+                assert cfg.plot_loss.ymin and cfg.plot_loss.ymax and cfg.plot_loss.ynum, \
+                'You specified some arguments for the y axis, but not all'
+    except Exception as e:
+        print(e)
         raise Exception('Improper format for x- or y-coordinates. Try something like -1:1:51')
 
 
@@ -257,11 +267,20 @@ def main(cfg):
     w = net_plotter.get_weights(net)
     s = copy.deepcopy(net.state_dict())
 
-    dir_file = cfg.plot_loss.dir_file
+    if (len(cfg.task.labs) > 20):
+        task_name = f'tasks_{len(cfg.task.labs)}'
+    else:
+        task_name = '_'.join([str(i) for i in cfg.task.labs])
+
+    direction_dir = f"{cfg.plot_loss.direction_dir}/pretrained_{cfg.plot_loss.pretrained_tag}_seed_{cfg.seed}/{task_name}/directions/"
+    os.makedirs(direction_dir, exist_ok=True)
+    dir_file = f"{direction_dir}/x_{cfg.plot_loss.x}_y_{cfg.plot_loss.y}.h5"
     net_plotter.setup_direction(cfg, dir_file, net)
 
-    surf_file = cfg.plot_loss.surf_file
-    setup_surface_file(cfg, surf_file, net)
+    surf_dir = f"{cfg.plot_loss.surf_dir}/pretrained_{cfg.plot_loss.pretrained_tag}_seed_{cfg.seed}/{task_name}/surfaces/"
+    os.makedirs(surf_dir, exist_ok=True)
+    surf_file = f"{surf_dir}/x_{cfg.plot_loss.x}_y_{cfg.plot_loss.y}.h5"
+    setup_surface_file(cfg, surf_file, dir_file)
 
     d = net_plotter.load_directions(dir_file)
 
@@ -273,7 +292,7 @@ def main(cfg):
     loaders = dataset.fetch_data_loaders(cfg.hp.bs, cfg.workers, shuf=False)
     trainloader, testloader = loaders[0], loaders[1]
 
-    crunch(surf_file, net, w, s, d, trainloader, 'train_loss', 'train_acc', comm, rank, cfg.plot_loss)
+    crunch(surf_file, net, w, s, d, trainloader, 'train_loss', 'train_acc', comm, rank, cfg)
 
     #--------------------------------------------------------------------------
     # Plot figures
@@ -282,7 +301,7 @@ def main(cfg):
         if cfg.plot_loss.y and cfg.plot_loss.proj_file:
             plot_2D.plot_contour_trajectory(surf_file, dir_file, cfg.plot_loss.proj_file, 'train_loss', cfg.plot_loss.show)
         elif cfg.plot_loss.y:
-            plot_2D.plot_2d_contour(surf_file, 'train_loss', cfg.plot_loss.vmin, cfg.plot_loss.vmax, cfg.plot_loss.vlevel, cfg.plot_loss.show)
+            plot_2D.plot_2d_contour(surf_file, surf_dir, 'train_loss', cfg.plot_loss.vmin, cfg.plot_loss.vmax, cfg.plot_loss.vlevel, cfg.plot_loss.show)
         else:
             plot_1D.plot_1d_loss_err(surf_file, cfg.plot_loss.xmin, cfg.plot_loss.xmax, cfg.plot_loss.loss_max, cfg.plot_loss.log, cfg.plot_loss.show)
 
