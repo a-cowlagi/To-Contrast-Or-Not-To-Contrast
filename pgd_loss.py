@@ -185,7 +185,6 @@ def generate_pgd_set(loader, epsilons, model, criterion):
 
 
 def evaluate_pgd_attack(dataset, tasks, model_path, classifier_path, learning_mode):
-
     model, classifier, criterion = load_model(model_path = "Final Model Weights/" + model_path, classifier_path= "Final Model weights/cifar100_classification_heads/" + classifier_path, learning_mode = learning_mode, tasks = tasks)
     dataset = fetch_dataset(dataset, tasks)
     loaders = dataset.fetch_data_loaders(bs=1, shuf=False)
@@ -195,12 +194,11 @@ def evaluate_pgd_attack(dataset, tasks, model_path, classifier_path, learning_mo
     net = model_wrapper(model, classifier)
     net.eval()
   
-    # orig_loss, orig_accuracy = eval_loss(net, criterion, trainloader, use_cuda = False)
+    orig_loss, orig_accuracy = eval_loss(net, criterion, trainloader, use_cuda = False)
     
-    # print(f"Epsilon: {0}, loss: {orig_loss}, accuracy: {orig_accuracy}")
+    print(f"Epsilon: {0}, loss: {orig_loss}, accuracy: {orig_accuracy}")
 
-    orig_accuracy = get_accuracy(net, criterion, trainloader)
-    print(f"Epsilon: {0}, accuracy: {orig_accuracy}")
+
     perturbed_images_per_eps, targets_for_perturbed_images = generate_pgd_set(trainloader, epsilons, net, criterion)
 
 
@@ -211,13 +209,9 @@ def evaluate_pgd_attack(dataset, tasks, model_path, classifier_path, learning_mo
         perturbed_dataset = TensorDataset(torch.stack(perturbed_images), torch.stack(targets_for_perturbed_images))
         loader = DataLoader(perturbed_dataset, batch_size = 16)
 
-        # eps_loss, eps_accuracy = eval_loss(net, criterion, loader, use_cuda = False)
-        # print(f"Epsilon: {epsilons[i]}, loss: {eps_loss}, accuracy: {eps_accuracy}")
-        # losses_per_eps.append(eps_loss)
-        
-
-        eps_accuracy = get_accuracy(net, criterion, loader)
-
+        eps_loss, eps_accuracy = eval_loss(net, criterion, loader, use_cuda = True)
+        print(f"Epsilon: {epsilons[i]}, loss: {eps_loss}, accuracy: {eps_accuracy}")
+        losses_per_eps.append(eps_loss)
         accuracies_per_eps.append(eps_accuracy)
 
         print(f"Epsilon: {epsilons[i]}, accuracy: {eps_accuracy}")
@@ -225,16 +219,17 @@ def evaluate_pgd_attack(dataset, tasks, model_path, classifier_path, learning_mo
     #BELOW DOES NOT WORK, ABOVE WORKS
 
     epsilon_and_original = np.insert(epsilons, 0, 0)
-    # losses_per_eps_and_original = np.insert(losses_per_eps, 0, orig_loss)
+    losses_per_eps_and_original = np.insert(losses_per_eps, 0, orig_loss)
     accuracies_per_eps_and_original = np.insert(accuracies_per_eps, 0, orig_accuracy)
-    # plt.scatter(epsilon_and_original, losses_per_eps_and_original, label = "Losses")
-    # plt.xlabel("Epsilon (/255)")
-    # plt.ylabel("Loss")
-    # title_str = model_path + '_' + classifier_path
-    # title_str = title_str.replace('/', '_')
-    # plt.title(title_str)
-    # plt.savefig(title_str + "_loss.png")
-    # plt.show()
+
+    plt.scatter(epsilon_and_original, losses_per_eps_and_original, label = "Losses")
+    plt.xlabel("Epsilon (/255)")
+    plt.ylabel("Loss")
+    title_str = model_path + '_' + classifier_path
+    title_str = title_str.replace('/', '_')
+    plt.title(title_str)
+    plt.savefig(title_str + "_loss.png")
+    plt.show()
 
     plt.scatter(epsilon_and_original, accuracies_per_eps_and_original, label = "Accuracies")
     plt.xlabel("Epsilon (/255)")
