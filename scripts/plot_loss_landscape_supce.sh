@@ -22,10 +22,10 @@ do
     CLF_CKPT_SUPCE20_TASK=$CLF_CKPT_SUPCE20/$task_name/models/classifier_30.pth
     CLF_CKPT_SUPCE30_TASK=$CLF_CKPT_SUPCE30/$task_name/models/classifier_30.pth
 
-    python3 plot_surface.py task=cifar100 task.labs=$task +map=supce plot_loss.model_ckpt_name=$MODEL_CKPT_SUPCE0 plot_loss.clf_ckpt_name=$CLF_CKPT_SUPCE0_TASK plot_loss.pretrained_tag=supce_on_cifar10 +plot_loss.seed=0
-    python3 plot_surface.py task=cifar100 task.labs=$task +map=supce plot_loss.model_ckpt_name=$MODEL_CKPT_SUPCE10 plot_loss.clf_ckpt_name=$CLF_CKPT_SUPCE10_TASK plot_loss.pretrained_tag=supce_on_cifar10 +plot_loss.seed=10
-    python3 plot_surface.py task=cifar100 task.labs=$task +map=supce plot_loss.model_ckpt_name=$MODEL_CKPT_SUPCE20 plot_loss.clf_ckpt_name=$CLF_CKPT_SUPCE20_TASK plot_loss.pretrained_tag=supce_on_cifar10 +plot_loss.seed=20
-    python3 plot_surface.py task=cifar100 task.labs=$task +map=supce plot_loss.model_ckpt_name=$MODEL_CKPT_SUPCE30 plot_loss.clf_ckpt_name=$CLF_CKPT_SUPCE30_TASK plot_loss.pretrained_tag=supce_on_cifar10 +plot_loss.seed=30
+    python3 plot_surface.py task=cifar100 task.labs=$task +map=supce plot_loss.model_ckpt_name=$MODEL_CKPT_SUPCE0 plot_loss.clf_ckpt_name=$CLF_CKPT_SUPCE0_TASK plot_loss.pretrained_tag=supce_on_cifar10 plot_loss.seed=0
+    python3 plot_surface.py task=cifar100 task.labs=$task +map=supce plot_loss.model_ckpt_name=$MODEL_CKPT_SUPCE10 plot_loss.clf_ckpt_name=$CLF_CKPT_SUPCE10_TASK plot_loss.pretrained_tag=supce_on_cifar10 plot_loss.seed=10
+    python3 plot_surface.py task=cifar100 task.labs=$task +map=supce plot_loss.model_ckpt_name=$MODEL_CKPT_SUPCE20 plot_loss.clf_ckpt_name=$CLF_CKPT_SUPCE20_TASK plot_loss.pretrained_tag=supce_on_cifar10 plot_loss.seed=20
+    python3 plot_surface.py task=cifar100 task.labs=$task +map=supce plot_loss.model_ckpt_name=$MODEL_CKPT_SUPCE30 plot_loss.clf_ckpt_name=$CLF_CKPT_SUPCE30_TASK plot_loss.pretrained_tag=supce_on_cifar10 plot_loss.seed=30
 
-    let INDEX=${INDEX}+1
+    let TASK_INDEX=${TASK_INDEX}+1
 done

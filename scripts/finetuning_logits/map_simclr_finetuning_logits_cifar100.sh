@@ -29,5 +29,5 @@ do
     python3 map_finetuning_logits.py task=cifar100 task.labs=$task +map=simclr map.model_ckpt_name=$MODEL_CKPT_SIMCLR20 +map.clf_ckpt_dir=$CLF_CKPT_SIMCLR20_TASK +map.seed=20
     python3 map_finetuning_logits.py task=cifar100 task.labs=$task +map=simclr map.model_ckpt_name=$MODEL_CKPT_SIMCLR30 +map.clf_ckpt_dir=$CLF_CKPT_SIMCLR30_TASK +map.seed=30
 
-    let INDEX=${INDEX}+1
+    let TASK_INDEX=${TASK_INDEX}+1
 done

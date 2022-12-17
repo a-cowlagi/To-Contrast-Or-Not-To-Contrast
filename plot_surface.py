@@ -40,6 +40,9 @@ class model_wrapper(nn.Module):
 
 def load_model(cfg):
     model_ckpt = torch.load(cfg.plot_loss.model_ckpt_name)
+    print(cfg.plot_loss.clf_ckpt_name)
+    print(cfg.plot_loss.model_ckpt_name)
+    print(cfg.task.labs)
     clf_ckpt = torch.load(cfg.plot_loss.clf_ckpt_name)
     if (cfg.map.learning_mode == "SimCLR") or (cfg.map.learning_mode == "SupCon"):
         model = SupConResNet(name=cfg.plot_loss.model, feat_dim = model_ckpt["model"]["head.2.bias"].shape[0])
