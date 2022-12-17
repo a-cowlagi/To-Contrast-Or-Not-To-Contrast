@@ -23,11 +23,11 @@ do
     CLF_CKPT_SIMCLR20_TASK=$CLF_CKPT_SIMCLR20/$task_name/models/classifier_30.pth
     CLF_CKPT_SIMCLR30_TASK=$CLF_CKPT_SIMCLR30/$task_name/models/classifier_30.pth
 
+    python3 plot_surface.py task=cifar100 task.labs=$task +map=simclr plot_loss.model_ckpt_name=$MODEL_CKPT_SIMCLR0 plot_loss.clf_ckpt_name=$CLF_CKPT_SIMCLR0_TASK plot_loss.pretrained_tag=simclr_on_cifar10 plot_loss.seed=0
+    python3 plot_surface.py task=cifar100 task.labs=$task +map=simclr plot_loss.model_ckpt_name=$MODEL_CKPT_SIMCLR10 plot_loss.clf_ckpt_name=$CLF_CKPT_SIMCLR10_TASK plot_loss.pretrained_tag=simclr_on_cifar10 plot_loss.seed=10
+    python3 plot_surface.py task=cifar100 task.labs=$task +map=simclr plot_loss.model_ckpt_name=$MODEL_CKPT_SIMCLR20 plot_loss.clf_ckpt_name=$CLF_CKPT_SIMCLR20_TASK plot_loss.pretrained_tag=simclr_on_cifar10 plot_loss.seed=20
+    python3 plot_surface.py task=cifar100 task.labs=$task +map=simclr plot_loss.model_ckpt_name=$MODEL_CKPT_SIMCLR30 plot_loss.clf_ckpt_name=$CLF_CKPT_SIMCLR30_TASK plot_loss.pretrained_tag=simclr_on_cifar10 plot_loss.seed=30
 
-    python3 plot_surface.py task=cifar100 task.labs=$task +map=simclr plot_loss.model_ckpt_name=$MODEL_CKPT_SIMCLR0 plot_loss.clf_ckpt_name=$CLF_CKPT_SIMCLR0_TASK plot_loss.pretrained_tag=simclr_on_cifar10
-    python3 plot_surface.py task=cifar100 task.labs=$task +map=simclr plot_loss.model_ckpt_name=$MODEL_CKPT_SIMCLR10 plot_loss.clf_ckpt_name=$CLF_CKPT_SIMCLR10_TASK plot_loss.pretrained_tag=simclr_on_cifar10
-    python3 plot_surface.py task=cifar100 task.labs=$task +map=simclr plot_loss.model_ckpt_name=$MODEL_CKPT_SIMCLR20 plot_loss.clf_ckpt_name=$CLF_CKPT_SIMCLR20_TASK plot_loss.pretrained_tag=simclr_on_cifar10
-    python3 plot_surface.py task=cifar100 task.labs=$task +map=simclr plot_loss.model_ckpt_name=$MODEL_CKPT_SIMCLR30 plot_loss.clf_ckpt_name=$CLF_CKPT_SIMCLR30_TASK plot_loss.pretrained_tag=simclr_on_cifar10
+    let TASK_INDEX=${TASK_INDEX}+1
 
-    let INDEX=${INDEX}+1
 done

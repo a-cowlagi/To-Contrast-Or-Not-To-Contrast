@@ -17,17 +17,16 @@ from glob import glob
 from utils.initialization import set_seed
 
 class model_wrapper(nn.Module):
-    def __init__(self, model, classifier):
+    def __init__(self, model, classifier, n_cls):
         super(model_wrapper, self).__init__()
         self.encoder = model.encoder
         self.classifier = classifier
+        self.encoder_dim = n_cls
 
     def forward(self, x, task):
         x = self.encoder(x)
-        flat_feat = torch.flatten(x, start_dim=1)
-        self.rep = F.normalize(flat_feat, dim=-1)
-
         x = self.classifier(x)
+        self.rep = x
         return x
 
 
@@ -65,7 +64,7 @@ def load_model(cfg, clf_ckpt_name):
         model.load_state_dict(model_state_dict)
         classifier.load_state_dict(clf_state_dict)
 
-    net = model_wrapper(model, classifier)
+    net = model_wrapper(model, classifier, len(cfg.task.labs))
 
     if torch.cuda.is_available():
         net = net.cuda()
@@ -77,7 +76,7 @@ def load_model(cfg, clf_ckpt_name):
 
 @hydra.main(config_path="./config", config_name="conf.yaml")
 def main(cfg):
-    set_seed(cfg.map.seed)
+    set_seed(0)
     cfg.seed = cfg.map.seed
 
     if (len(cfg.task.labs) > 20):
@@ -98,9 +97,6 @@ def main(cfg):
         fpath = "tmp"   
 
     
-    cfg.task.labs = cfg.map.task_labs
-
-
     dataset = fetch_dataset(cfg)
     loaders = dataset.fetch_data_loaders(cfg.hp.bs, cfg.workers, shuf=False)
 
