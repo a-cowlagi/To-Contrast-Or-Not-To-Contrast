@@ -173,12 +173,13 @@ def evaluate_pgd_attack(dataset, tasks, model_path, classifier_path, learning_mo
     loaders = dataset.fetch_data_loaders(bs=1, shuf=False)
     trainloader, testloader = loaders[0], loaders[1]
 
-    epsilons = np.arange(1, 16, 1)
+    epsilons = np.arange(1.0, 16.0, 1.0)
     net = model_wrapper(model, classifier)
     net.eval()
-    perturbed_images_per_eps, targets_for_perturbed_images = generate_pgd_set(testloader, epsilons, net, criterion)
+    perturbed_images_per_eps, targets_for_perturbed_images = generate_pgd_set(trainloader, epsilons, net, criterion)
 
-    orig_loss, orig_accuracy = eval_loss(net, criterion, testloader, use_cuda = False)
+    orig_loss, orig_accuracy = eval_loss(net, criterion, trainloader, use_cuda = False)
+    print(f"Epsilon: {0}, loss: {orig_loss}, accuracy: {orig_accuracy}")
 
     losses_per_eps = []
     accuracies_per_eps = []
@@ -194,13 +195,14 @@ def evaluate_pgd_attack(dataset, tasks, model_path, classifier_path, learning_mo
 
     #BELOW DOES NOT WORK, ABOVE WORKS
 
-    epsilon_and_original = [0, epsilons]
-    losses_per_eps_and_original = [orig_loss, losses_per_eps]
-    accuracies_per_eps_and_original = [orig_accuracy, accuracies_per_eps]
+    epsilon_and_original = np.insert(epsilons, 0, 0)
+    losses_per_eps_and_original = np.insert(losses_per_eps, 0, orig_loss)
+    accuracies_per_eps_and_original = np.insert(accuracies_per_eps, 0, orig_accuracy)
     plt.scatter(epsilon_and_original, losses_per_eps_and_original, label = "Losses")
     plt.xlabel("Epsilon (/255)")
     plt.ylabel("Loss")
     title_str = model_path + '_' + classifier_path
+    title_str = title_str.replace('/', '_')
     plt.title(title_str)
     plt.savefig(title_str + "_loss.png")
     plt.show()
@@ -209,6 +211,7 @@ def evaluate_pgd_attack(dataset, tasks, model_path, classifier_path, learning_mo
     plt.xlabel("Epsilon (/255)")
     plt.ylabel("Accuarcy (%)")
     title_str = model_path + '_' + classifier_path
+    title_str = title_str.replace('/', '_')
     plt.title(title_str)
     plt.savefig(title_str + "_loss.png")
     plt.show()
