@@ -80,6 +80,24 @@ def fetch_dataset(dataset, tasks):
         dataset = Cifar100Dataset(tasks, permute=False)
     return dataset
 
+def get_accuracy(net, criterion, loader):
+    correct = 0
+    total = 0
+    net.eval()
+
+    with torch.no_grad():
+        for batch_idx, (inputs, targets) in enumerate(loader):
+            batch_size = inputs.size(0)
+            total += batch_size
+            inputs = Variable(inputs)
+            targets = Variable(targets.long())
+            outputs = net(inputs)   
+            loss = criterion(outputs, targets)
+            _, predicted = torch.max(outputs.data, 1)
+            correct += predicted.eq(targets).sum().item()
+            total += inputs.size(0)
+
+    return correct / total
 
 def eval_loss(net, criterion, loader, use_cuda=True):
     """
@@ -111,7 +129,7 @@ def eval_loss(net, criterion, loader, use_cuda=True):
                 targets = Variable(targets.long())
                 if use_cuda:
                     inputs, targets = inputs.cuda(), targets.cuda()
-                outputs = net(inputs)
+                outputs = net(inputs)   
                 loss = criterion(outputs, targets)
                 total_loss += loss.item()*batch_size
                 _, predicted = torch.max(outputs.data, 1)
@@ -176,10 +194,15 @@ def evaluate_pgd_attack(dataset, tasks, model_path, classifier_path, learning_mo
     epsilons = np.arange(1.0, 16.0, 1.0)
     net = model_wrapper(model, classifier)
     net.eval()
+  
+    # orig_loss, orig_accuracy = eval_loss(net, criterion, trainloader, use_cuda = False)
+    
+    # print(f"Epsilon: {0}, loss: {orig_loss}, accuracy: {orig_accuracy}")
+
+    orig_accuracy = get_accuracy(net, criterion, trainloader)
+    print(f"Epsilon: {0}, accuracy: {orig_accuracy}")
     perturbed_images_per_eps, targets_for_perturbed_images = generate_pgd_set(trainloader, epsilons, net, criterion)
 
-    orig_loss, orig_accuracy = eval_loss(net, criterion, trainloader, use_cuda = False)
-    print(f"Epsilon: {0}, loss: {orig_loss}, accuracy: {orig_accuracy}")
 
     losses_per_eps = []
     accuracies_per_eps = []
@@ -188,32 +211,38 @@ def evaluate_pgd_attack(dataset, tasks, model_path, classifier_path, learning_mo
         perturbed_dataset = TensorDataset(torch.stack(perturbed_images), torch.stack(targets_for_perturbed_images))
         loader = DataLoader(perturbed_dataset, batch_size = 16)
 
-        eps_loss, eps_accuracy = eval_loss(net, criterion, loader, use_cuda = False)
-        print(f"Epsilon: {epsilons[i]}, loss: {eps_loss}, accuracy: {eps_accuracy}")
-        losses_per_eps.append(eps_loss)
+        # eps_loss, eps_accuracy = eval_loss(net, criterion, loader, use_cuda = False)
+        # print(f"Epsilon: {epsilons[i]}, loss: {eps_loss}, accuracy: {eps_accuracy}")
+        # losses_per_eps.append(eps_loss)
+        
+
+        eps_accuracy = get_accuracy(net, criterion, loader)
+
         accuracies_per_eps.append(eps_accuracy)
+
+        print(f"Epsilon: {epsilons[i]}, accuracy: {eps_accuracy}")
 
     #BELOW DOES NOT WORK, ABOVE WORKS
 
     epsilon_and_original = np.insert(epsilons, 0, 0)
-    losses_per_eps_and_original = np.insert(losses_per_eps, 0, orig_loss)
+    # losses_per_eps_and_original = np.insert(losses_per_eps, 0, orig_loss)
     accuracies_per_eps_and_original = np.insert(accuracies_per_eps, 0, orig_accuracy)
-    plt.scatter(epsilon_and_original, losses_per_eps_and_original, label = "Losses")
-    plt.xlabel("Epsilon (/255)")
-    plt.ylabel("Loss")
-    title_str = model_path + '_' + classifier_path
-    title_str = title_str.replace('/', '_')
-    plt.title(title_str)
-    plt.savefig(title_str + "_loss.png")
-    plt.show()
+    # plt.scatter(epsilon_and_original, losses_per_eps_and_original, label = "Losses")
+    # plt.xlabel("Epsilon (/255)")
+    # plt.ylabel("Loss")
+    # title_str = model_path + '_' + classifier_path
+    # title_str = title_str.replace('/', '_')
+    # plt.title(title_str)
+    # plt.savefig(title_str + "_loss.png")
+    # plt.show()
 
     plt.scatter(epsilon_and_original, accuracies_per_eps_and_original, label = "Accuracies")
     plt.xlabel("Epsilon (/255)")
-    plt.ylabel("Accuarcy (%)")
+    plt.ylabel("Accuracy")
     title_str = model_path + '_' + classifier_path
     title_str = title_str.replace('/', '_')
     plt.title(title_str)
-    plt.savefig(title_str + "_loss.png")
+    plt.savefig(title_str + "_accuracy.png")
     plt.show()
 
 
