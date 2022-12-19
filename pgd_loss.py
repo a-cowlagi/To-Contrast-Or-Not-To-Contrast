@@ -195,7 +195,7 @@ def generate_pgd_set(loader, epsilons, model, criterion):
 
 
 
-def evaluate_pgd_attack(dataset, tasks, model_path, classifier_path, learning_mode, plot=False):
+def evaluate_pgd_attack(dataset, tasks, model_path, classifier_path, learning_mode):
     model, classifier, criterion = load_model(model_path = model_path, classifier_path= classifier_path, learning_mode = learning_mode, tasks = tasks)
     dataset = fetch_dataset(dataset, tasks)
     loaders = dataset.fetch_data_loaders(bs=1, shuf=False)
@@ -229,35 +229,9 @@ def evaluate_pgd_attack(dataset, tasks, model_path, classifier_path, learning_mo
     losses_per_eps_and_original = np.insert(losses_per_eps, 0, orig_loss)
     accuracies_per_eps_and_original = np.insert(accuracies_per_eps, 0, orig_accuracy)
 
-    if plot:
-        plt.scatter(epsilon_and_original, losses_per_eps_and_original, label = "Losses")
-        plt.xlabel("Epsilon (/255)")
-        plt.ylabel("Loss")
-        title_str = model_path + '_' + classifier_path
-        title_str = title_str.replace('/', '_')
-        plt.title(title_str)
-        plt.savefig(title_str + "_loss.png")
-        plt.show()
-
-        plt.scatter(epsilon_and_original, accuracies_per_eps_and_original, label = "Accuracies")
-        plt.xlabel("Epsilon (/255)")
-        plt.ylabel("Accuracy")
-        title_str = model_path + '_' + classifier_path
-        title_str = title_str.replace('/', '_')
-        plt.title(title_str)
-        plt.savefig(title_str + "_accuracy.png")
-        plt.show()
-
     return epsilon_and_original, losses_per_eps_and_original, accuracies_per_eps_and_original
 
 def pgd_across_seed(dataset, tasks, seeds, learning_mode):
-    losses_per_epsilon = []
-    accuracies_per_epsilon = []
-    epsilons = np.arange(0.0, 16.0, 1.0)
-    for epsilon in epsilons:
-        losses_per_epsilon.append([])
-        accuracies_per_epsilon.append([])
-
     model_base_path = "Final Model Weights/cifar10_backbones/" + learning_mode + "/" + learning_mode.lower() + "_final_model"
     classifier_base_path = "Final Model Weights/cifar100_classification_heads/" + learning_mode + "/task"
 
@@ -266,6 +240,20 @@ def pgd_across_seed(dataset, tasks, seeds, learning_mode):
         classifier_base_path += str(task)
     
     classifier_base_path += "/final_classifier"
+
+    save_path = "results/" + learning_mode
+
+    for task in tasks:
+        save_path += "_"
+        save_path += str(task)
+
+
+    losses_per_epsilon = []
+    accuracies_per_epsilon = []
+    epsilons = np.arange(0.0, 16.0, 1.0)
+    for epsilon in epsilons:
+        losses_per_epsilon.append([])
+        accuracies_per_epsilon.append([])
 
     for seed in seeds:
         model_path = model_base_path + "_seed" + str(seed)
@@ -288,12 +276,7 @@ def pgd_across_seed(dataset, tasks, seeds, learning_mode):
         accuracy_means.append(np.mean(accuracies_per_epsilon[i]))
         accuracy_stds.append(np.std(accuracies_per_epsilon[i]))
 
-    save_path = "results/" + learning_mode
-
-    for task in tasks:
-        save_path += "_"
-        save_path += str(task)
-    
+       
     with open(save_path + '_loss_means.pkl', 'wb') as f:
         pickle.dump(loss_means, f)
     
