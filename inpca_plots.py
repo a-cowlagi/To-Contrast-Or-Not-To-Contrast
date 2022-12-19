@@ -122,7 +122,7 @@ def main(cfg):
     all_finetuning = np.stack((finetuning_supce_all_seeds, finetuning_simclr_all_seeds, finetuning_supcon_all_seeds), axis=0)
 
     # reduce representation
-    pretraining_reduced = reduce_rep(all_pretraining, inpca=True, dynamic_shape=False) 
+    # pretraining_reduced = reduce_rep(all_pretraining, inpca=True, dynamic_shape=False) 
     finetuning_reduced = reduce_rep(all_finetuning, inpca=True, dynamic_shape=False)  
 
     # plot inpca
@@ -130,8 +130,8 @@ def main(cfg):
     print(save_path)
     os.makedirs(save_path, exist_ok=True)
 
-    plot_inpca(pretraining_reduced, 3, labels = ["SupCE", "SimCLR", "SupCon"], azimuth=cfg.plot_inpca.azimuth, elevation=cfg.plot_inpca.elevation, save_path=f"{save_path}pretraining", plot_true_probs = False)
-    plot_inpca(finetuning_reduced, 3, labels = ["SupCE", "SimCLR", "SupCon"], save_path=f"{save_path}finetuning", plot_true_probs = True)  
+    # plot_inpca(pretraining_reduced, 3, labels = ["SupCE", "SimCLR", "SupCon"], azimuth=cfg.plot_inpca.azimuth, elevation=cfg.plot_inpca.elevation, save_path=f"{save_path}pretraining", plot_true_probs = False)
+    plot_inpca(finetuning_reduced, 3, labels = ["SupCE", "SimCLR", "SupCon"], azimuth = 40, elevation = 20, save_path=f"{save_path}finetuning", plot_true_probs = True)  
 
 
 if __name__ == "__main__":

@@ -7,6 +7,9 @@ import torch
 import warnings
 import argparse
 warnings.filterwarnings('ignore')
+import matplotlib
+matplotlib.rcParams['mathtext.fontset'] = 'stix'
+matplotlib.rcParams['font.family'] = 'STIXGeneral'
 
 
 def plot_progress(progress_dict, save_path=None):
@@ -18,12 +21,43 @@ def plot_progress(progress_dict, save_path=None):
 
         ax[ctr // 2, ctr % 2].set_title(task_title)
         ax[ctr // 2, ctr % 2].set_xlabel("Epoch")
-        ax[ctr // 2, ctr % 2].set_ylabel("Progress")
+        ax[ctr // 2, ctr % 2].set_ylabel(r"$t_w$")
         ax[ctr // 2, ctr % 2].legend()
 
     if save_path is not None:
         plt.savefig(save_path + ".png", dpi=300, bbox_inches='tight')
     
+    return fig, ax
+
+def plot_progress_matrix(progress_dict, save_path=None):
+    # plot a matrix of the progress dictionary by task and method
+    progress_matrix = np.zeros((len(progress_dict), len(progress_dict[list(progress_dict.keys())[0]])))
+    for ctr, (task_title, task_progress) in enumerate(progress_dict.items()):
+        for method_name, (progress, std) in task_progress.items():
+            progress_matrix[ctr, list(task_progress.keys()).index(method_name)] = progress[-1]
+
+    fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+    im = ax.imshow(progress_matrix, cmap='viridis', interpolation='nearest')
+    cbar = ax.figure.colorbar(im, ax=ax)
+    cbar.ax.set_ylabel(r'$t_w$', rotation=-90, va="bottom", fontsize = 20)
+
+    ax.set_xticks(np.arange(len(progress_dict[list(progress_dict.keys())[0]])))
+    ax.set_yticks(np.arange(len(progress_dict)))
+    ax.set_xticklabels(list(progress_dict[list(progress_dict.keys())[0]].keys()))   
+    ax.set_yticklabels(list(progress_dict.keys()))
+
+    for i in range(len(progress_dict)):
+        for j in range(len(progress_dict[list(progress_dict.keys())[0]])):
+            text = ax.text(j, i, round(progress_matrix[i, j], 2), ha="center", va="center", color="w")
+
+    # Highlight the max value in each row by putting a red border around the box
+    for i in range(len(progress_dict)):
+        max_index = np.argmax(progress_matrix[i, :])
+        ax.add_patch(plt.Rectangle((max_index - 0.5, i - 0.5), 1, 1, fill=False, edgecolor='red', lw=3))
+    
+    if save_path is not None:
+        plt.savefig(save_path + ".png", dpi=300, bbox_inches='tight')
+
     return fig, ax
 
 
@@ -129,7 +163,9 @@ def main(plots):
     if "finetuning_progress" in plots:
         save_path = f"progress_plots/finetuning/"
         os.makedirs(save_path, exist_ok=True)
-        plot_progress(finetuning_progress, save_path=f"{save_path}finetuning") 
+        plot_progress(finetuning_progress, save_path=f"{save_path}finetuning_progress")
+        plot_progress_matrix(finetuning_progress, save_path=f"{save_path}finetuning_progress_matrix")
+
 
 
 if __name__ == "__main__":
