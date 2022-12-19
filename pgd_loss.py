@@ -316,17 +316,17 @@ def gen_progress_dict(base_path, base_str, learning_modes, tasks_master):
   return progress_dict
 
 def plot_progress(progress_dict, xlabel, ylabel, xs, ylim_low, ylim_high, save_path=None):
-    fig, ax = plt.subplots(2, 2, figsize=(20, 20))
+    fig, ax = plt.subplots(1, 4, figsize=(40, 10))
     for ctr, (task_title, task_progress) in enumerate(progress_dict.items()):
         for method_name, (means, stds) in task_progress.items():
-            ax[ctr // 2, ctr % 2].plot(xs, means, label=method_name)
-            ax[ctr // 2, ctr % 2].fill_between(xs, means - stds, means + stds, alpha=0.2)
+            ax[ctr].plot(xs, means, label=method_name)
+            ax[ctr].fill_between(xs, means - stds, means + stds, alpha=0.2)
 
         # ax[ctr // 2, ctr % 2].set_title(task_title)
-        ax[ctr // 2, ctr % 2].set_xlabel(xlabel)
-        ax[ctr // 2, ctr % 2].set_ylabel(ylabel)
-        ax[ctr // 2, ctr % 2].legend()
-        ax[ctr // 2, ctr % 2].set_ylim(ylim_low, ylim_high)
+        ax[ctr].set_xlabel(xlabel)
+        ax[ctr].set_ylabel(ylabel)
+        ax[ctr].legend()
+        ax[ctr].set_ylim(ylim_low, ylim_high)
 
     if save_path is not None:
         plt.savefig(save_path + ".png", dpi=300, bbox_inches='tight')
