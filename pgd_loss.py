@@ -341,13 +341,17 @@ def generate_and_save_pgd_results():
             pgd_across_seed(dataset="cifar100", tasks = tasks, seeds = [0, 10, 20, 30], learning_mode=learning_mode)
 
 def main():
+    generated_data_already = True
+    if not generated_data_already:
+        generate_and_save_pgd_results()
 
     tasks_master = [[0, 1, 2, 3, 4], [6, 11, 16, 21, 26], [56, 58, 62, 66, 68], [95, 96, 97, 98, 99]]
     learning_modes = ["SimCLR", "SupCE", "SupCon"]
     accuracy_dict = gen_progress_dict(base_path="results/", base_str="accuracy", learning_modes=learning_modes, tasks_master=tasks_master)
     loss_dict = gen_progress_dict(base_path="results/", base_str="loss", learning_modes=learning_modes, tasks_master=tasks_master)
-    
+
     fig, ax = plot_progress(progress_dict=accuracy_dict, xlabel=r'$\epsilon$', ylabel="Accuracy (%)", xs=np.arange(0.0, 16.0/255.0, 1.0/255.0), ylim_low=0, ylim_high=100, save_path = "accuracy_pgd")
+    
     fig, ax = plot_progress(progress_dict=loss_dict, xlabel=r'$\epsilon$', ylabel=r'$\mathcal{L}(w: D)$', xs=np.arange(0.0, 16.0/255.0, 1.0/255.0), ylim_low=0.0, ylim_high=5.0, save_path = "loss_pgd")
 if __name__ == '__main__':
     main()
