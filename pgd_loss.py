@@ -195,7 +195,7 @@ def generate_pgd_set(loader, epsilons, model, criterion):
 
 
 
-def evaluate_pgd_attack(dataset, tasks, model_path, classifier_path, learning_mode, plot=False):
+def evaluate_pgd_attack(dataset, tasks, model_path, classifier_path, learning_mode):
     model, classifier, criterion = load_model(model_path = model_path, classifier_path= classifier_path, learning_mode = learning_mode, tasks = tasks)
     dataset = fetch_dataset(dataset, tasks)
     loaders = dataset.fetch_data_loaders(bs=1, shuf=False)
@@ -229,35 +229,9 @@ def evaluate_pgd_attack(dataset, tasks, model_path, classifier_path, learning_mo
     losses_per_eps_and_original = np.insert(losses_per_eps, 0, orig_loss)
     accuracies_per_eps_and_original = np.insert(accuracies_per_eps, 0, orig_accuracy)
 
-    if plot:
-        plt.scatter(epsilon_and_original, losses_per_eps_and_original, label = "Losses")
-        plt.xlabel("Epsilon (/255)")
-        plt.ylabel("Loss")
-        title_str = model_path + '_' + classifier_path
-        title_str = title_str.replace('/', '_')
-        plt.title(title_str)
-        plt.savefig(title_str + "_loss.png")
-        plt.show()
-
-        plt.scatter(epsilon_and_original, accuracies_per_eps_and_original, label = "Accuracies")
-        plt.xlabel("Epsilon (/255)")
-        plt.ylabel("Accuracy")
-        title_str = model_path + '_' + classifier_path
-        title_str = title_str.replace('/', '_')
-        plt.title(title_str)
-        plt.savefig(title_str + "_accuracy.png")
-        plt.show()
-
     return epsilon_and_original, losses_per_eps_and_original, accuracies_per_eps_and_original
 
 def pgd_across_seed(dataset, tasks, seeds, learning_mode):
-    losses_per_epsilon = []
-    accuracies_per_epsilon = []
-    epsilons = np.arange(0.0, 16.0, 1.0)
-    for epsilon in epsilons:
-        losses_per_epsilon.append([])
-        accuracies_per_epsilon.append([])
-
     model_base_path = "Final Model Weights/cifar10_backbones/" + learning_mode + "/" + learning_mode.lower() + "_final_model"
     classifier_base_path = "Final Model Weights/cifar100_classification_heads/" + learning_mode + "/task"
 
@@ -266,6 +240,20 @@ def pgd_across_seed(dataset, tasks, seeds, learning_mode):
         classifier_base_path += str(task)
     
     classifier_base_path += "/final_classifier"
+
+    save_path = "results/" + learning_mode
+
+    for task in tasks:
+        save_path += "_"
+        save_path += str(task)
+
+
+    losses_per_epsilon = []
+    accuracies_per_epsilon = []
+    epsilons = np.arange(0.0, 16.0, 1.0)
+    for epsilon in epsilons:
+        losses_per_epsilon.append([])
+        accuracies_per_epsilon.append([])
 
     for seed in seeds:
         model_path = model_base_path + "_seed" + str(seed)
@@ -288,12 +276,7 @@ def pgd_across_seed(dataset, tasks, seeds, learning_mode):
         accuracy_means.append(np.mean(accuracies_per_epsilon[i]))
         accuracy_stds.append(np.std(accuracies_per_epsilon[i]))
 
-    save_path = "results/" + learning_mode
-
-    for task in tasks:
-        save_path += "_"
-        save_path += str(task)
-    
+       
     with open(save_path + '_loss_means.pkl', 'wb') as f:
         pickle.dump(loss_means, f)
     
@@ -307,31 +290,69 @@ def pgd_across_seed(dataset, tasks, seeds, learning_mode):
         pickle.dump(accuracy_stds, f)
 
 
-def plot_progress(progress_dict, save_path=None):
+def gen_progress_dict(base_path, base_str, learning_modes, tasks_master):
+  progress_dict = {}
+  for tasks in tasks_master:
+    task_title = ', '.join([str(x) for x in tasks])
+    progress_dict[task_title] = {}
+
+  for learning_mode in learning_modes:
+    for tasks in tasks_master:
+      task_phrase = ""
+      for task in tasks:
+        task_phrase += "_"
+        task_phrase += str(task)
+      mean_phrase = base_path + learning_mode + task_phrase + "_" + base_str + "_means.pkl"
+      std_phrase = base_path + learning_mode + task_phrase + "_" + base_str + "_stds.pkl"
+
+      with open(mean_phrase, 'rb') as f:
+        means = np.array(pickle.load(f))
+      with open(std_phrase, 'rb') as f:
+        stds = np.array(pickle.load(f))
+
+      task_title = ', '.join([str(x) for x in tasks])
+      progress_dict[task_title][learning_mode] = (means, stds)
+
+  return progress_dict
+
+def plot_progress(progress_dict, xlabel, ylabel, xs, ylim_low, ylim_high, save_path=None):
     fig, ax = plt.subplots(2, 2, figsize=(20, 20))
     for ctr, (task_title, task_progress) in enumerate(progress_dict.items()):
-        for method_name, (progress, std) in task_progress.items():
-            ax[ctr // 2, ctr % 2].plot(progress, label=method_name)
-            ax[ctr // 2, ctr % 2].fill_between(np.arange(progress.shape[0]), progress - std, progress + std, alpha=0.2)
+        for method_name, (means, stds) in task_progress.items():
+            ax[ctr // 2, ctr % 2].plot(xs, means, label=method_name)
+            ax[ctr // 2, ctr % 2].fill_between(xs, means - stds, means + stds, alpha=0.2)
 
-        ax[ctr // 2, ctr % 2].set_title(task_title)
-        ax[ctr // 2, ctr % 2].set_xlabel("Epoch")
-        ax[ctr // 2, ctr % 2].set_ylabel("Progress")
+        # ax[ctr // 2, ctr % 2].set_title(task_title)
+        ax[ctr // 2, ctr % 2].set_xlabel(xlabel)
+        ax[ctr // 2, ctr % 2].set_ylabel(ylabel)
         ax[ctr // 2, ctr % 2].legend()
+        ax[ctr // 2, ctr % 2].set_ylim(ylim_low, ylim_high)
 
     if save_path is not None:
         plt.savefig(save_path + ".png", dpi=300, bbox_inches='tight')
     
     return fig, ax
 
-
-def main():
+def generate_and_save_pgd_results():
     tasks_master = [[0, 1, 2, 3, 4], [6, 11, 16, 21, 26], [56, 58, 62, 66, 68], [95, 96, 97, 98, 99]]
-    learning_modes = ["SupCE", "SupCon"]
+    learning_modes = ["SimCLR", "SupCE", "SupCon"]
     for learning_mode in learning_modes:
         for tasks in tasks_master:
             pgd_across_seed(dataset="cifar100", tasks = tasks, seeds = [0, 10, 20, 30], learning_mode=learning_mode)
 
+def main():
+    generated_data_already = True
+    if not generated_data_already:
+        generate_and_save_pgd_results()
+
+    tasks_master = [[0, 1, 2, 3, 4], [6, 11, 16, 21, 26], [56, 58, 62, 66, 68], [95, 96, 97, 98, 99]]
+    learning_modes = ["SimCLR", "SupCE", "SupCon"]
+    accuracy_dict = gen_progress_dict(base_path="results/", base_str="accuracy", learning_modes=learning_modes, tasks_master=tasks_master)
+    loss_dict = gen_progress_dict(base_path="results/", base_str="loss", learning_modes=learning_modes, tasks_master=tasks_master)
+
+    fig, ax = plot_progress(progress_dict=accuracy_dict, xlabel=r'$\epsilon$', ylabel="Accuracy (%)", xs=np.arange(0.0, 16.0/255.0, 1.0/255.0), ylim_low=0, ylim_high=100, save_path = "accuracy_pgd")
+    
+    fig, ax = plot_progress(progress_dict=loss_dict, xlabel=r'$\epsilon$', ylabel=r'$\mathcal{L}(w: D)$', xs=np.arange(0.0, 16.0/255.0, 1.0/255.0), ylim_low=0.0, ylim_high=5.0, save_path = "loss_pgd")
 if __name__ == '__main__':
     main()
 
