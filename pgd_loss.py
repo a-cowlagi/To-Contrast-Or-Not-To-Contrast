@@ -25,6 +25,7 @@ import matplotlib.pyplot as plt
 import utils.plot_2D as plot_2D
 import utils.plot_1D as plot_1D
 import utils.h5_util as h5_util
+import pickle
 
 class model_wrapper(nn.Module):
     def __init__(self, model, classifier):
@@ -63,12 +64,21 @@ def load_model(model_path, classifier_path, learning_mode, tasks):
             model_state_dict = new_model_state_dict
         
         
-        # model = model.cuda()
-        # classifier = classifier.cuda()
-        # criterion = criterion.cuda()
+        model = model.cuda()
+        classifier = classifier.cuda()
+        criterion = criterion.cuda()
 
         model.load_state_dict(model_state_dict)
         classifier.load_state_dict(clf_state_dict)
+    else:
+        new_model_state_dict = {}
+        for k, v in model_state_dict.items():
+            k = k.replace("module.", "")
+            new_model_state_dict[k] = v
+        model_state_dict = new_model_state_dict
+        model.load_state_dict(model_state_dict)
+        classifier.load_state_dict(clf_state_dict)
+
 
     return model, classifier, criterion
 
@@ -80,6 +90,24 @@ def fetch_dataset(dataset, tasks):
         dataset = Cifar100Dataset(tasks, permute=False)
     return dataset
 
+def get_accuracy(net, criterion, loader):
+    correct = 0
+    total = 0
+    net.eval()
+
+    with torch.no_grad():
+        for batch_idx, (inputs, targets) in enumerate(loader):
+            batch_size = inputs.size(0)
+            total += batch_size
+            inputs = Variable(inputs)
+            targets = Variable(targets.long())
+            outputs = net(inputs)   
+            loss = criterion(outputs, targets)
+            _, predicted = torch.max(outputs.data, 1)
+            correct += predicted.eq(targets).sum().item()
+            total += inputs.size(0)
+
+    return correct / total
 
 def eval_loss(net, criterion, loader, use_cuda=True):
     """
@@ -111,7 +139,7 @@ def eval_loss(net, criterion, loader, use_cuda=True):
                 targets = Variable(targets.long())
                 if use_cuda:
                     inputs, targets = inputs.cuda(), targets.cuda()
-                outputs = net(inputs)
+                outputs = net(inputs)   
                 loss = criterion(outputs, targets)
                 total_loss += loss.item()*batch_size
                 _, predicted = torch.max(outputs.data, 1)
@@ -146,7 +174,8 @@ def generate_pgd_set(loader, epsilons, model, criterion):
         perturbed_images_per_eps.append([])
 
     for batch_idx, (inputs, targets) in enumerate(loader):
-        print(f"Batch idx: {batch_idx}/{len(loader)}")
+        if batch_idx % 1000 == 0:
+            print(f"Batch idx: {batch_idx}/{len(loader)}")
 
         image = Variable(inputs)
         targets = Variable(targets.long())
@@ -166,9 +195,8 @@ def generate_pgd_set(loader, epsilons, model, criterion):
 
 
 
-def evaluate_pgd_attack(dataset, tasks, model_path, classifier_path, learning_mode):
-
-    model, classifier, criterion = load_model(model_path = "Final Model Weights/" + model_path, classifier_path= "Final Model weights/cifar100_classification_heads/" + classifier_path, learning_mode = learning_mode, tasks = tasks)
+def evaluate_pgd_attack(dataset, tasks, model_path, classifier_path, learning_mode, plot=False):
+    model, classifier, criterion = load_model(model_path = model_path, classifier_path= classifier_path, learning_mode = learning_mode, tasks = tasks)
     dataset = fetch_dataset(dataset, tasks)
     loaders = dataset.fetch_data_loaders(bs=1, shuf=False)
     trainloader, testloader = loaders[0], loaders[1]
@@ -176,10 +204,14 @@ def evaluate_pgd_attack(dataset, tasks, model_path, classifier_path, learning_mo
     epsilons = np.arange(1.0, 16.0, 1.0)
     net = model_wrapper(model, classifier)
     net.eval()
+  
+    orig_loss, orig_accuracy = eval_loss(net, criterion, trainloader, use_cuda = False)
+    
+    print(f"Epsilon: {0}, loss: {orig_loss}, accuracy: {orig_accuracy}")
+
+
     perturbed_images_per_eps, targets_for_perturbed_images = generate_pgd_set(trainloader, epsilons, net, criterion)
 
-    orig_loss, orig_accuracy = eval_loss(net, criterion, trainloader, use_cuda = False)
-    print(f"Epsilon: {0}, loss: {orig_loss}, accuracy: {orig_accuracy}")
 
     losses_per_eps = []
     accuracies_per_eps = []
@@ -193,32 +225,112 @@ def evaluate_pgd_attack(dataset, tasks, model_path, classifier_path, learning_mo
         losses_per_eps.append(eps_loss)
         accuracies_per_eps.append(eps_accuracy)
 
-    #BELOW DOES NOT WORK, ABOVE WORKS
-
     epsilon_and_original = np.insert(epsilons, 0, 0)
     losses_per_eps_and_original = np.insert(losses_per_eps, 0, orig_loss)
     accuracies_per_eps_and_original = np.insert(accuracies_per_eps, 0, orig_accuracy)
-    plt.scatter(epsilon_and_original, losses_per_eps_and_original, label = "Losses")
-    plt.xlabel("Epsilon (/255)")
-    plt.ylabel("Loss")
-    title_str = model_path + '_' + classifier_path
-    title_str = title_str.replace('/', '_')
-    plt.title(title_str)
-    plt.savefig(title_str + "_loss.png")
-    plt.show()
 
-    plt.scatter(epsilon_and_original, accuracies_per_eps_and_original, label = "Accuracies")
-    plt.xlabel("Epsilon (/255)")
-    plt.ylabel("Accuarcy (%)")
-    title_str = model_path + '_' + classifier_path
-    title_str = title_str.replace('/', '_')
-    plt.title(title_str)
-    plt.savefig(title_str + "_loss.png")
-    plt.show()
+    if plot:
+        plt.scatter(epsilon_and_original, losses_per_eps_and_original, label = "Losses")
+        plt.xlabel("Epsilon (/255)")
+        plt.ylabel("Loss")
+        title_str = model_path + '_' + classifier_path
+        title_str = title_str.replace('/', '_')
+        plt.title(title_str)
+        plt.savefig(title_str + "_loss.png")
+        plt.show()
+
+        plt.scatter(epsilon_and_original, accuracies_per_eps_and_original, label = "Accuracies")
+        plt.xlabel("Epsilon (/255)")
+        plt.ylabel("Accuracy")
+        title_str = model_path + '_' + classifier_path
+        title_str = title_str.replace('/', '_')
+        plt.title(title_str)
+        plt.savefig(title_str + "_accuracy.png")
+        plt.show()
+
+    return epsilon_and_original, losses_per_eps_and_original, accuracies_per_eps_and_original
+
+def pgd_across_seed(dataset, tasks, seeds, learning_mode):
+    losses_per_epsilon = []
+    accuracies_per_epsilon = []
+    epsilons = np.arange(0.0, 16.0, 1.0)
+    for epsilon in epsilons:
+        losses_per_epsilon.append([])
+        accuracies_per_epsilon.append([])
+
+    model_base_path = "Final Model Weights/cifar10_backbones/" + learning_mode + "/" + learning_mode.lower() + "_final_model"
+    classifier_base_path = "Final Model Weights/cifar100_classification_heads/" + learning_mode + "/task"
+
+    for task in tasks:
+        classifier_base_path += "_"
+        classifier_base_path += str(task)
+    
+    classifier_base_path += "/final_classifier"
+
+    for seed in seeds:
+        model_path = model_base_path + "_seed" + str(seed)
+        classifier_path =  classifier_base_path + "_seed" + str(seed)
+        print(f"----Seed: {seed}-----")
+        _, curr_losses, curr_accuracies = evaluate_pgd_attack(dataset=dataset, tasks=tasks, model_path = model_path, classifier_path = classifier_path, learning_mode=learning_mode)
+        for i, curr_loss in enumerate(curr_losses):
+            losses_per_epsilon[i].append(curr_loss)
+            accuracies_per_epsilon[i].append(curr_accuracies[i])
+
+    loss_means = []
+    loss_stds = []
+    accuracy_means = []
+    accuracy_stds = []
+
+    for i, epsilon in enumerate(epsilons):
+        loss_means.append(np.mean(losses_per_epsilon[i]))
+        loss_stds.append(np.std(losses_per_epsilon[i]))
+
+        accuracy_means.append(np.mean(accuracies_per_epsilon[i]))
+        accuracy_stds.append(np.std(accuracies_per_epsilon[i]))
+
+    save_path = "results/" + learning_mode
+
+    for task in tasks:
+        save_path += "_"
+        save_path += str(task)
+    
+    with open(save_path + '_loss_means.pkl', 'wb') as f:
+        pickle.dump(loss_means, f)
+    
+    with open(save_path + '_loss_stds.pkl', 'wb') as f:
+        pickle.dump(loss_stds, f)
+
+    with open(save_path + '_accuracy_means.pkl', 'wb') as f:
+        pickle.dump(accuracy_means, f)
+
+    with open(save_path + '_accuracy_stds.pkl', 'wb') as f:
+        pickle.dump(accuracy_stds, f)
+
+
+def plot_progress(progress_dict, save_path=None):
+    fig, ax = plt.subplots(2, 2, figsize=(20, 20))
+    for ctr, (task_title, task_progress) in enumerate(progress_dict.items()):
+        for method_name, (progress, std) in task_progress.items():
+            ax[ctr // 2, ctr % 2].plot(progress, label=method_name)
+            ax[ctr // 2, ctr % 2].fill_between(np.arange(progress.shape[0]), progress - std, progress + std, alpha=0.2)
+
+        ax[ctr // 2, ctr % 2].set_title(task_title)
+        ax[ctr // 2, ctr % 2].set_xlabel("Epoch")
+        ax[ctr // 2, ctr % 2].set_ylabel("Progress")
+        ax[ctr // 2, ctr % 2].legend()
+
+    if save_path is not None:
+        plt.savefig(save_path + ".png", dpi=300, bbox_inches='tight')
+    
+    return fig, ax
 
 
 def main():
-    evaluate_pgd_attack("cifar100", tasks = [0, 1, 2, 3, 4], model_path="simclr_final_model_seed0", classifier_path = "task_0_1_2_3_4/final_classifier_seed0", learning_mode="SimCLR")
+    tasks_master = [[0, 1, 2, 3, 4], [6, 11, 16, 21, 26], [56, 58, 62, 66, 68], [95, 96, 97, 98, 99]]
+    learning_modes = ["SupCE", "SupCon"]
+    for learning_mode in learning_modes:
+        for tasks in tasks_master:
+            pgd_across_seed(dataset="cifar100", tasks = tasks, seeds = [0, 10, 20, 30], learning_mode=learning_mode)
 
 if __name__ == '__main__':
     main()
