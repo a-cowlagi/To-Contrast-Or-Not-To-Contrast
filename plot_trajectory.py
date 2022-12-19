@@ -13,16 +13,16 @@ matplotlib.rcParams['font.family'] = 'STIXGeneral'
 
 
 def plot_progress(progress_dict, save_path=None):
-    fig, ax = plt.subplots(2, 2, figsize=(20, 20))
+    fig, ax = plt.subplots(1, 4, figsize=(40, 10))
     for ctr, (task_title, task_progress) in enumerate(progress_dict.items()):
         for method_name, (progress, std) in task_progress.items():
-            ax[ctr // 2, ctr % 2].plot(progress, label=method_name)
-            ax[ctr // 2, ctr % 2].fill_between(np.arange(progress.shape[0]), progress - std, progress + std, alpha=0.2)
+            ax[ctr].plot(progress, label=method_name)
+            ax[ctr].fill_between(np.arange(progress.shape[0]), progress - std, progress + std, alpha=0.2)
 
-        ax[ctr // 2, ctr % 2].set_title(task_title)
-        ax[ctr // 2, ctr % 2].set_xlabel("Epoch")
-        ax[ctr // 2, ctr % 2].set_ylabel(r"$t_w$")
-        ax[ctr // 2, ctr % 2].legend()
+        # ax[ctr // 2, ctr % 2].set_title(task_title)
+        ax[ctr].set_xlabel("Epoch")
+        ax[ctr].set_ylabel(r"$t_w$", fontsize = 25)
+        ax[ctr].legend()
 
     if save_path is not None:
         plt.savefig(save_path + ".png", dpi=300, bbox_inches='tight')
